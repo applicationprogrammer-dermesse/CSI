@@ -166,8 +166,25 @@
                                 </div>
                             </div>
 
-
-
+                            <!-- NEW DATE RANGE SECTION -->
+                            <div style="margin-bottom: 5px" class="input-group">
+                                <div class="col-md-1 col-1 text-left">
+                                    Date From :
+                                </div>
+                                <div class="col-sm-2">
+                                    <div class="input-group">
+                                        <asp:TextBox ID="txtDateFrom" runat="server" class="form-control datepicker" placeholder="mm/dd/yyyy" Style="width: 120px;"></asp:TextBox>
+                                    </div>
+                                </div>
+                                <div class="col-md-1 col-1 text-left">
+                                    Date To :
+                                </div>
+                                <div class="col-sm-2">
+                                    <div class="input-group">
+                                        <asp:TextBox ID="txtDateTo" runat="server" class="form-control datepicker" placeholder="mm/dd/yyyy" Style="width: 120px;"></asp:TextBox>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div style="margin-bottom: 5px" class="input-group">
                                 <div class="col-md-1 col-1 text-left">
@@ -255,19 +272,10 @@
                                             <ItemStyle HorizontalAlign="Center"></ItemStyle>
                                         </asp:BoundField>
 
-                                        <%--<asp:BoundField DataField="Qty" HeaderText="Quantity" DataFormatString="{0:#,##0.##;(#,##0.##);0}" ItemStyle-Width="5%" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center">
-                                            <HeaderStyle HorizontalAlign="Center"></HeaderStyle>
-                                            <ItemStyle HorizontalAlign="Center"></ItemStyle>
-                                        </asp:BoundField>--%>
-
-
-
                                         <asp:BoundField DataField="EndingBal" HeaderText="Ending Balance"  DataFormatString="{0:#,##0.##;(#,##0.##);0}" ItemStyle-Width="15%" HeaderStyle-HorizontalAlign="Center" ItemStyle-HorizontalAlign="Center">
                                             <HeaderStyle HorizontalAlign="Center"></HeaderStyle>
                                             <ItemStyle HorizontalAlign="Center"></ItemStyle>
                                         </asp:BoundField>
-
-
 
                                     </Columns>
                                 </asp:GridView>
@@ -301,6 +309,7 @@
 
     <script>
         $(function () {
+            // Initialize DataTable
             $("#<%= gvStockCard.ClientID%>").DataTable({
                 "paging": true,
                 "lengthChange": true,
@@ -315,6 +324,14 @@
                 "autoWidth": false,
                 "responsive": true,
             }).buttons().container().appendTo('#gvStockCard_wrapper .col-md-6:eq(0)');;
+
+            // Initialize datepicker for date fields
+            $(".datepicker").datepicker({
+                dateFormat: "mm/dd/yy",
+                changeMonth: true,
+                changeYear: true,
+                maxDate: new Date()
+            });
         });
     </script>
 
@@ -370,4 +387,3 @@
 
 
 </asp:Content>
-
