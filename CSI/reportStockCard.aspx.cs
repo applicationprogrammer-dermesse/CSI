@@ -28,18 +28,17 @@ namespace CSI
                     ViewState["ViewStateId"] = System.Guid.NewGuid().ToString();
                     Session["SessionId"] = ViewState["ViewStateId"].ToString();
 
+                    // Set default date range to last 30 days
+                    txtDateFrom.Text = DateTime.Now.AddDays(-30).ToString("MM/dd/yyyy");
+                    txtDateTo.Text = DateTime.Now.ToString("MM/dd/yyyy");
+
                     if (Session["UserBranchCode"].ToString() == "1")
                     {
                         loadBranch();
-                       
-
                     }
                     else
                     {
-
                         loadPerBranch();
-                        
-
                     }
 
                     loadCategory();
@@ -106,8 +105,8 @@ namespace CSI
             using (SqlConnection conN = new SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["MyConnCSI"].ConnectionString))
             {
                 string stR = @"SELECT [Sup_CategoryNum]
-                                      ,[Sup_CategoryName]
-                                  FROM [Sup_Category] order by [Sup_CategoryName]";
+                              ,[Sup_CategoryName]
+                          FROM [Sup_Category] order by [Sup_CategoryName]";
                 using (SqlCommand cmD = new SqlCommand(stR, conN))
                 {
                     conN.Open();
@@ -119,14 +118,47 @@ namespace CSI
                     ddCategory.DataValueField = "Sup_CategoryNum";
                     ddCategory.DataTextField = "Sup_CategoryName";
                     ddCategory.DataBind();
-                    ddCategory.Items.Insert(0, new ListItem("Select Category", "0"));
-                    ddCategory.SelectedIndex = 0;
+                    ddCategory.Items.Insert(0, new ListItem("All Categories", "-1")); // Changed from "0" to "-1"
+                    ddCategory.Items.Insert(1, new ListItem("Select Category", "0")); // Keep select option but make it different
+                    ddCategory.SelectedIndex = 1; // Select "Select Category" by default
                 }
             }
         }
 
         protected void btnGenerate_Click(object sender, EventArgs e)
         {
+            // Validate date range
+            DateTime dateFrom, dateTo;
+
+            if (!DateTime.TryParse(txtDateFrom.Text, out dateFrom))
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "alert",
+                    "alert('Please enter a valid From Date');", true);
+                return;
+            }
+
+            if (!DateTime.TryParse(txtDateTo.Text, out dateTo))
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "alert",
+                    "alert('Please enter a valid To Date');", true);
+                return;
+            }
+
+            if (dateFrom > dateTo)
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "alert",
+                    "alert('From Date cannot be greater than To Date');", true);
+                return;
+            }
+
+            // Validate item selection when a specific category is chosen
+            if (ddCategory.SelectedValue != "-1" && ddItem.SelectedValue == "0")
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "alert",
+                    "alert('Please select an item');", true);
+                return;
+            }
+
             if (ddBranch.SelectedValue == "1")
             {
                 genStockCardLogistics();
@@ -149,15 +181,18 @@ namespace CSI
                     cmD.CommandTimeout = 0;
                     cmD.CommandType = CommandType.StoredProcedure;
                     cmD.Parameters.AddWithValue("@BrCode", ddBranch.SelectedValue);
-                    cmD.Parameters.AddWithValue("@ItemCode", ddItem.SelectedValue);
-                    cmD.Parameters.AddWithValue("@CategoryNum", ddCategory.SelectedValue);
+                    cmD.Parameters.AddWithValue("@ItemCode", ddItem.SelectedValue == "0" && ddCategory.SelectedValue == "-1"
+                        ? (object)DBNull.Value : ddItem.SelectedValue);
+                    cmD.Parameters.AddWithValue("@CategoryNum", ddCategory.SelectedValue == "-1"
+                        ? (object)DBNull.Value : ddCategory.SelectedValue);
+                    cmD.Parameters.AddWithValue("@DateFrom", DateTime.Parse(txtDateFrom.Text));
+                    cmD.Parameters.AddWithValue("@DateTo", DateTime.Parse(txtDateTo.Text));
                     DataTable dT = new DataTable();
                     SqlDataAdapter dA = new SqlDataAdapter(cmD);
                     dA.Fill(dT);
 
                     gvStockCard.DataSource = dT;
                     gvStockCard.DataBind();
-
                 }
             }
         }
@@ -172,15 +207,18 @@ namespace CSI
                     sqlConn.Open();
                     cmD.CommandTimeout = 0;
                     cmD.CommandType = CommandType.StoredProcedure;
-                    cmD.Parameters.AddWithValue("@ItemCode", ddItem.SelectedValue);
-                    cmD.Parameters.AddWithValue("@CategoryNum", ddCategory.SelectedValue);
+                    cmD.Parameters.AddWithValue("@ItemCode", ddItem.SelectedValue == "0" && ddCategory.SelectedValue == "-1"
+                        ? (object)DBNull.Value : ddItem.SelectedValue);
+                    cmD.Parameters.AddWithValue("@CategoryNum", ddCategory.SelectedValue == "-1"
+                        ? (object)DBNull.Value : ddCategory.SelectedValue);
+                    cmD.Parameters.AddWithValue("@DateFrom", DateTime.Parse(txtDateFrom.Text));
+                    cmD.Parameters.AddWithValue("@DateTo", DateTime.Parse(txtDateTo.Text));
                     DataTable dT = new DataTable();
                     SqlDataAdapter dA = new SqlDataAdapter(cmD);
                     dA.Fill(dT);
 
                     gvStockCard.DataSource = dT;
                     gvStockCard.DataBind();
-
                 }
             }
         }
@@ -206,13 +244,15 @@ namespace CSI
         {
             using (SqlConnection sqlConn = new SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["MyConnCSI"].ConnectionString))
             {
+                string whereClause = ddCategory.SelectedValue == "-1"
+                    ? "WHERE b.sup_DESCRIPTION IS NOT NULL"
+                    : "WHERE b.sup_DESCRIPTION IS NOT NULL and a.Sup_CategoryNum='" + ddCategory.SelectedValue + "'";
 
                 string stR = @"SELECT DISTINCT a.sup_ItemCode,a.sup_ItemCode + ' - ' + b.sup_DESCRIPTION as [sup_DESCRIPTION] 
-                                FROM [ITEM_RecordsHeader] a
-                                LEFT JOIN Sup_ItemMaster b
-                                ON a.sup_ItemCode=b.sup_ItemCode
-                                WHERE b.sup_DESCRIPTION IS NOT NULL and a.Sup_CategoryNum='" + ddCategory.SelectedValue + "' " +
-								" ORDER BY sup_DESCRIPTION";
+                        FROM [ITEM_RecordsHeader] a
+                        LEFT JOIN Sup_ItemMaster b
+                        ON a.sup_ItemCode=b.sup_ItemCode
+                        " + whereClause + " ORDER BY sup_DESCRIPTION";
 
                 using (SqlCommand cmD = new SqlCommand(stR, sqlConn))
                 {
@@ -226,7 +266,15 @@ namespace CSI
                     ddItem.DataTextField = "sup_DESCRIPTION";
                     ddItem.DataValueField = "sup_ItemCode";
                     ddItem.DataBind();
-                    ddItem.Items.Insert(0, new ListItem("Please select item", "0"));
+
+                    if (ddCategory.SelectedValue == "-1")
+                    {
+                        ddItem.Items.Insert(0, new ListItem("All Items", "0"));
+                    }
+                    else
+                    {
+                        ddItem.Items.Insert(0, new ListItem("Please select item", "0"));
+                    }
                     ddItem.SelectedIndex = 0;
                 }
             }
