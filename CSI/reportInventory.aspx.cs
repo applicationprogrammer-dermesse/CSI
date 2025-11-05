@@ -226,7 +226,7 @@ namespace CSI
         {
             using (SqlConnection conN = new SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["MyConnCSI"].ConnectionString))
             {
-                if (Convert.ToInt32(Session["UserBranchCode"].ToString()) > 1 & Convert.ToInt32(Session["UserBranchCode"].ToString()) < 30)
+                if (Convert.ToInt32(Session["UserBranchCode"].ToString()) > 1 & Convert.ToInt32(Session["UserBranchCode"].ToString()) < 30 || Convert.ToInt32(Session["UserBranchCode"].ToString()) == 52)
                 {
                     stRCategory = @"SELECT [Sup_CategoryNum]
                                       ,[Sup_CategoryName]
